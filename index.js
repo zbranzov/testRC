@@ -46,8 +46,14 @@ const testPlugins = function () {
             for (let index = fromIndex; index < toIndex; index++) {
 
                 let pluginName = plugins[index].name;
+                // test tns build android
                 installPlugin(pluginName);
                 buildApp(index, pluginName);
+                checkForAarFile(pluginName);
+                removePlugin(pluginName);
+                // test tns plugin build
+                installPlugin(pluginName);
+                buildPlugin(pluginName);
                 checkForAarFile(pluginName);
                 removePlugin(pluginName);
                 removePlatforms();
@@ -89,9 +95,20 @@ const installPlugin = function (pluginName) {
 const buildApp = function (index, pluginName) {
     try {
         child_process.execSync("cd demo && " + tns + " build android");
-        console.log("App built");
+        console.log("# App built");
     } catch (e) {
-        log(">>> Failed building " + pluginName + " at index " + index);
+        log(">>> Failed building app with " + pluginName + " at index " + index);
+        const error = e.stderr ? e.stderr.toString() : e;
+        log(error);
+    }
+};
+
+const buildPlugin = function (pluginName) {
+    try {
+        child_process.execSync("cd demo/node_modules/" + pluginName + "&& ../../" + tns + " plugin build");
+        console.log("# Plugin built");
+    } catch (e) {
+        log(">>> Failed building " + pluginName);
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
     }
