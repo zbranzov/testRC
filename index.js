@@ -150,7 +150,7 @@ const checkForAarFile = function (pluginName) {
         const shouldHaveAar = findOne(androidFiles, possibleFiles);
         let hasAarFile = false;
         if (shouldHaveAar) {
-            const pluginAar = pluginName.replace("-", "_") + ".aar";
+            const pluginAar = pluginName.replace(/\-/g, "_") + ".aar";
             hasAarFile = androidFiles.includes(pluginAar);
 
             if (!hasAarFile) {
