@@ -3,6 +3,7 @@ const fs = require('fs');
 const child_process = require("child_process");
 const parseArgs = require('minimist');
 const rimraf = require('rimraf');
+const stringTable = require('string-table');
 
 const possibleFiles = ["AndroidManifest.xml", "java", "jniLibs", "res", "assets"];
 const tns = "../node_modules/.bin/tns";
@@ -41,30 +42,41 @@ const testPlugins = function () {
         .then(function (plugins) {
             const argv = parseArgs(process.argv, opts = {})
             const fromIndex = argv.from || 0;
-            const toIndex = argv.to > plugins.length ? plugins.length : argv.to;
-            console.log("Testing plugins from " + fromIndex + " to " + toIndex);
+            const toIndex = argv.to > plugins.length ? plugins.length : argv.to || plugins.length;
+            console.log(child_process.execSync("npm show tns-android@next version").toString());
+            log("Testing plugins from " + fromIndex + " to " + toIndex);
+            let failedPlugins = [];
             for (let index = fromIndex; index < toIndex; index++) {
-
                 let pluginName = plugins[index].name;
+                let plugin = new Plugin();
+                plugin.name = pluginName
                 // test tns build android
                 installPlugin(pluginName);
-                buildApp(index, pluginName);
-                checkForAarFile(pluginName);
+                plugin.hasBuiltApp = buildApp(index, pluginName);
+                plugin.hasAarOnAppBuild = checkForAarFile(pluginName);
                 removePlugin(pluginName);
                 // test tns plugin build
                 installPlugin(pluginName);
-                buildPlugin(pluginName);
-                checkForAarFile(pluginName);
+                plugin.hasBuiltPlugin = buildPlugin(pluginName);
+                plugin.hasAarOnPluginBuild = checkForAarFile(pluginName);
                 removePlugin(pluginName);
                 removePlatforms();
+                if (!plugin.hasBuiltApp || !plugin.hasAarOnAppBuild || !plugin.hasBuiltPlugin) {
+                    failedPlugins.push(plugin)
+                }
             }
+
+            console.log("\nFAILED PLUGINS \n");
+            failedPlugins.sort(function(a){return !a.hasAarOnAppBuild && a.hasBuiltApp});
+            console.log(stringTable.create(failedPlugins, { headers: ['name', 'hasBuiltApp', 'hasAarOnAppBuild', 'hasBuiltPlugin', 'hasAarOnPluginBuild'], capitalizeHeaders: true }));
+
         })
 };
 
 const findOne = function (actualFiles, searchedFiles) {
     return searchedFiles.some(function (item) {
         if (actualFiles.indexOf(item) >= 0) {
-            console.log("Found " + item);
+            log("Found " + item);
             return true;
         } else {
             return false;
@@ -85,7 +97,7 @@ const log = function (data, fileName) {
 const installPlugin = function (pluginName) {
     try {
         child_process.execSync("cd demo &&" + tns + " plugin add " + pluginName);
-        console.log("\nInstalled " + pluginName);
+        log("\nInstalled " + pluginName);
     } catch (e) {
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
@@ -95,29 +107,33 @@ const installPlugin = function (pluginName) {
 const buildApp = function (index, pluginName) {
     try {
         child_process.execSync("cd demo && " + tns + " build android");
-        console.log("# App built");
+        log("# App built");
+        return true;
     } catch (e) {
         log(">>> Failed building app with " + pluginName + " at index " + index);
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
+        return false;
     }
 };
 
 const buildPlugin = function (pluginName) {
     try {
         child_process.execSync("cd demo/node_modules/" + pluginName + "&& ../../" + tns + " plugin build");
-        console.log("# Plugin built");
+        log("# Plugin built");
+        return true;
     } catch (e) {
         log(">>> Failed building " + pluginName);
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
+        return false;
     }
 };
 
 const removePlugin = function (pluginName) {
     try {
         child_process.execSync("cd demo &&" + tns + " plugin remove " + pluginName);
-        console.log("Removed " + pluginName);
+        log("Removed " + pluginName);
     } catch (e) {
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
@@ -140,10 +156,13 @@ const checkForAarFile = function (pluginName) {
             if (!hasAarFile) {
                 const message = ">>> " + pluginName + " has no Aar file!!!";
                 log(message);
+                return false;
             } else {
-                console.log(pluginName + " has .aar file");
+                log(pluginName + " has .aar file");
+                return true;
             }
         }
+        return true;
     } catch (e) {
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
@@ -153,11 +172,20 @@ const checkForAarFile = function (pluginName) {
 const removePlatforms = function () {
     try {
         rimraf.sync('demo/platforms');
-        console.log("Platforms folder removed");
+        log("Platforms folder removed");
     } catch (e) {
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
     }
 };
 
+function Plugin() {
+    this.name = "";
+    this.hasBuiltApp = false;
+    this.hasAarOnAppBuild = false;
+    this.hasBuiltPlugin = false;
+    this.hasAarOnPluginBuild = false;
+}
+
 testPlugins();
+
