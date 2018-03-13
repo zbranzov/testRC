@@ -7,6 +7,7 @@ const stringTable = require('string-table');
 
 const possibleFiles = ["AndroidManifest.xml", "java", "jniLibs", "res", "assets"];
 const tns = "../node_modules/.bin/tns";
+const unremovablePlugins = ["nativescript-linearprogressbar-swift-3.2", "nativescript-socket.io"];
 
 const getPlugins = new Promise(
     function getPlugins(resolve, reject) {
@@ -48,6 +49,9 @@ const testPlugins = function () {
             let failedPlugins = [];
             for (let index = fromIndex; index < toIndex; index++) {
                 let pluginName = plugins[index].name;
+                if (unremovablePlugins.includes(pluginName)) {
+                    continue;
+                }
                 let plugin = new Plugin();
                 plugin.name = pluginName
                 // test tns build android
@@ -67,7 +71,7 @@ const testPlugins = function () {
             }
 
             console.log("\nFAILED PLUGINS \n");
-            failedPlugins.sort(function(a){return !a.hasAarOnAppBuild && a.hasBuiltApp});
+            failedPlugins.sort(function (a) { return !a.hasAarOnAppBuild && a.hasBuiltApp });
             console.log(stringTable.create(failedPlugins, { headers: ['name', 'hasBuiltApp', 'hasAarOnAppBuild', 'hasBuiltPlugin', 'hasAarOnPluginBuild'], capitalizeHeaders: true }));
 
         })
