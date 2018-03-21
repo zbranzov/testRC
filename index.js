@@ -130,6 +130,9 @@ const buildPlugin = function (pluginName) {
         log(">>> Failed building " + pluginName);
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
+        if (error.includes("No plugin found at the current directory, or the plugin does not need to have its platforms/android components built into an `.aar`.")) {
+            return "no need";
+        }
         return false;
     }
 };
@@ -169,7 +172,7 @@ const checkForAarFile = function (pluginName) {
                 return true;
             }
         }
-        return true;
+        return "doesn't produce";
     } catch (e) {
         const error = e.stderr ? e.stderr.toString() : e;
         log(error);
