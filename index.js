@@ -6,7 +6,7 @@ const rimraf = require('rimraf');
 const stringTable = require('string-table');
 
 const possibleFiles = ["AndroidManifest.xml", "java", "jniLibs", "res", "assets"];
-const tns = "../node_modules/.bin/tns";
+const tns = __dirname + "/node_modules/.bin/tns";
 const unremovablePlugins = ["nativescript-linearprogressbar-swift-3.2", "nativescript-socket.io"];
 
 const getPlugins = new Promise(
@@ -100,7 +100,7 @@ const log = function (data, fileName) {
 
 const installPlugin = function (pluginName) {
     try {
-        child_process.execSync("cd demo &&" + tns + " plugin add " + pluginName);
+        child_process.execSync("cd demo && " + tns + " plugin add " + pluginName);
         log("\nInstalled " + pluginName);
     } catch (e) {
         const error = e.stderr ? e.stderr.toString() : e;
@@ -123,7 +123,7 @@ const buildApp = function (index, pluginName) {
 
 const buildPlugin = function (pluginName) {
     try {
-        child_process.execSync("cd demo/node_modules/" + pluginName + "&& ../../" + tns + " plugin build");
+        child_process.execSync("cd demo/node_modules/" + pluginName + " && " + tns + " plugin build");
         log("# Plugin built");
         return true;
     } catch (e) {
@@ -154,7 +154,10 @@ const checkForAarFile = function (pluginName) {
         const shouldHaveAar = findOne(androidFiles, possibleFiles);
         let hasAarFile = false;
         if (shouldHaveAar) {
-            const pluginAar = pluginName.replace(/\-/g, "_") + ".aar";
+            let pluginAar = pluginName.replace(/\-/g, "_") + ".aar";
+            if (pluginAar.includes("/")) {
+                pluginAar = pluginAar.substring(pluginAar.indexOf("/") + 1);
+            }
             hasAarFile = androidFiles.includes(pluginAar);
 
             if (!hasAarFile) {
